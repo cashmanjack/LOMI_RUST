@@ -85,7 +85,7 @@ fn tokenize_df(df: &mut DataFrame, n: usize, tokenizer: &Tokenizer) -> Result<()
 
     for col in df.get_column_names() {
         if col != "source_id" {
-            print!("\n\nup to here now\n\n\n");
+            //print!("\n\nup to here now\n\n\n");
 
             let tokenized_values: Vec<Vec<String>> = df.column(col)?
                 .str()?
@@ -100,10 +100,10 @@ fn tokenize_df(df: &mut DataFrame, n: usize, tokenizer: &Tokenizer) -> Result<()
                 .map(|inner_vec| inner_vec.join(" "))
                 .collect();
 
-            let limit = 10;
-            for (i, value) in collected_tokenized.iter().take(limit).enumerate() {
-                println!("Value {}: {}", i + 1, value);
-            }
+            // let limit = 10;
+            // for (i, value) in collected_tokenized.iter().take(limit).enumerate() {
+            //     println!("Value {}: {}", i + 1, value);
+            // }
 
             let tokens_series: Series = Series::new(&format!("{}_tokenized", col), collected_tokenized);
         
@@ -124,7 +124,7 @@ fn tokenize_df(df: &mut DataFrame, n: usize, tokenizer: &Tokenizer) -> Result<()
             }
         }
     }*/
-    let mut file = std::fs::File::create("/Users/jackcashman/Documents/Summer_2024/Code/Locality-of-Machine-Intelligence-refactor/dataset/tokenized.csv").unwrap();
+    let mut file = std::fs::File::create("./tokenized.csv").unwrap();
     CsvWriter::new(&mut file).finish(&mut df).unwrap();
     //df.write_csv("./dataset/tokenized.csv")?;
     Ok(())
@@ -204,14 +204,12 @@ fn generate_dmd_sequence(df: &DataFrame, window_size: usize, n_gram: usize) -> R
                         dmd_sequence.push(dmd.to_string());
                     }
                     None => {
-                        // Handle the case where the value is None
                         skipped_answers += 1;
                     }
                 }
             }
         }
 
-        // Calculate percent_used
         let percent_used = if total_answers > 0 {
             (total_answers - skipped_answers) as f64 / total_answers as f64
         } else {
@@ -219,12 +217,11 @@ fn generate_dmd_sequence(df: &DataFrame, window_size: usize, n_gram: usize) -> R
         };
         println!("Percent used: {}", percent_used);
 
-        // Add the calculated DMD values to the DMD sequence DataFrame
         let new_data = DataFrame::new(vec![
             Series::new("model", vec![model_name]),
             Series::new("window_size", vec![window_size as u32]),
             Series::new("percent_used", vec![percent_used]),
-            Series::new("dmd_sequence", vec![dmd_sequence.join(",")]), // Example conversion
+            Series::new("dmd_sequence", vec![dmd_sequence.join(",")]),
             Series::new("gram", vec![n_gram as u32])
         ])?;
 
@@ -235,7 +232,7 @@ fn generate_dmd_sequence(df: &DataFrame, window_size: usize, n_gram: usize) -> R
 }
 
 fn run_with_step(df: DataFrame, step: usize, n_gram: usize) -> Result<DataFrame, Box<dyn Error>> {
-    let mut final_dmd_sequence_df = DataFrame::default(); // Create an empty DataFrame
+    let mut final_dmd_sequence_df = DataFrame::default();
 
     for window_size in (50..=500).step_by(step) {
         let dmd_sequence_df = generate_dmd_sequence(&df.clone(), window_size, n_gram)?;
@@ -246,17 +243,17 @@ fn run_with_step(df: DataFrame, step: usize, n_gram: usize) -> Result<DataFrame,
 }
 
 fn run_all(path: &str, n_gram: usize, step: usize) -> Result<DataFrame, Box<dyn Error>> {
-    let tokenizer: Tokenizer = Tokenizer::from_file("/Users/jackcashman/Documents/Summer_2024/Code/Locality-of-Machine-Intelligence-refactor/dmd_analyzer_rust/tokenizer.json").map_err(|e| e.to_string())?;
+    let tokenizer: Tokenizer = Tokenizer::from_file("/Users/jackcashman/Documents/Summer_2024/Code/LOMI_RUST/dmd_analyzer_rust/tokenizer.json").map_err(|e| e.to_string())?;
     
     let mut df: DataFrame = read_original_jsonl(path)?;
     tokenize_df(&mut df, n_gram, &tokenizer)?;
-    print!("\n\nup to here\n\n\n");
+    //print!("\n\nup to here\n\n\n");
     let dmd_sequence_df = run_with_step(df, step, n_gram)?;
     Ok(dmd_sequence_df)
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let path: &str = "/Users/jackcashman/Documents/Summer_2024/Code/Locality-of-Machine-Intelligence-refactor/dataset/HC3_reddit_transformed.jsonl";
+    let path: &str = "/Users/jackcashman/Documents/Summer_2024/Code/LOMI_RUST/dataset/HC3_reddit_transformed.jsonl";
     let step: usize = 50;
     let mut dmd_sequence_df: DataFrame = DataFrame::default();
     for n_gram in 1..=3 {
@@ -264,7 +261,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         dmd_sequence_df.vstack_mut(&result)?;
     }
 
-    let file = File::create("./HC3_reddit_all.csv")?;
+    let file = File::create("./dataset/HC3_reddit_all.csv")?;
     CsvWriter::new(file).finish(&mut dmd_sequence_df)?;
     
     Ok(())
